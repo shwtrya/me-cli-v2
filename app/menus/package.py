@@ -7,7 +7,16 @@ from app.client.engsel import get_family, get_package, get_addons, get_package_d
 from app.client.ciam import get_auth_code
 from app.service.bookmark import BookmarkInstance
 from app.client.purchase.redeem import settlement_bounty, settlement_loyalty, bounty_allotment
-from app.menus.util import clear_screen, pause, display_html
+from app.menus.util import (
+    clear_screen,
+    pause,
+    display_html,
+    render_header,
+    render_table,
+    format_price,
+    format_status,
+    style_text,
+)
 from app.client.purchase.qris import show_qris_payment
 from app.client.purchase.ewallet import show_multipayment
 from app.client.purchase.balance import settlement_balance
@@ -21,13 +30,11 @@ def show_package_details(api_key, tokens, package_option_code, is_enterprise, op
     subscription_type = active_user.get("subscription_type", "")
     
     clear_screen()
-    print("-------------------------------------------------------")
-    print("Detail Paket")
-    print("-------------------------------------------------------")
+    print(render_header("Detail Paket", 55, subtitle=subscription_type))
     package = get_package(api_key, tokens, package_option_code)
     # print(f"[SPD-202]:\n{json.dumps(package, indent=1)}")
     if not package:
-        print("Failed to load package details.")
+        print(format_status("Failed to load package details.", success=False))
         pause()
         return False
 
@@ -64,7 +71,7 @@ def show_package_details(api_key, tokens, package_option_code, is_enterprise, op
     
     print("-------------------------------------------------------")
     print(f"Nama: {title}")
-    print(f"Harga: Rp {price}")
+    print(f"Harga: {format_price(price)}")
     print(f"Payment For: {payment_for}")
     print(f"Masa Aktif: {validity}")
     print(f"Point: {package['package_option']['point']}")
@@ -144,7 +151,7 @@ def show_package_details(api_key, tokens, package_option_code, is_enterprise, op
     
     in_package_detail_menu = True
     while in_package_detail_menu:
-        print("Options:")
+        print(style_text("Options:", bold=True))
         print("1. Beli dengan Pulsa")
         print("2. Beli dengan E-Wallet")
         print("3. Bayar dengan QRIS")
@@ -522,26 +529,28 @@ def get_packages_by_family(
     while in_package_menu:
         clear_screen()
         # print(f"[GPBF-283]:\n{json.dumps(data, indent=2)}")
-        print("-------------------------------------------------------")        
-        print(f"Family Name: {data['package_family']['name']}")
-        print(f"Family Code: {family_code}")
-        print(f"Family Type: {data['package_family']['package_family_type']}")
-        # print(f"Enterprise: {'Yes' if is_enterprise else 'No'}")
-        print(f"Variant Count: {len(data['package_variants'])}")
-        print("-------------------------------------------------------")
-        print("Paket Tersedia")
-        print("-------------------------------------------------------")
+        header = render_header(
+            "Daftar Paket",
+            55,
+            subtitle=data["package_family"]["name"],
+            meta_lines=[
+                f"Family Code: {family_code}",
+                f"Family Type: {data['package_family']['package_family_type']}",
+                f"Variant Count: {len(data['package_variants'])}",
+            ],
+        )
+        print(header)
+        print(style_text("Paket Tersedia", bold=True))
         
         package_variants = data["package_variants"]
         
         option_number = 1
         variant_number = 1
         
+        rows = []
         for variant in package_variants:
             variant_name = variant["name"]
             variant_code = variant["package_variant_code"]
-            print(f" Variant {variant_number}: {variant_name}")
-            print(f" Code: {variant_code}")
             for option in variant["package_options"]:
                 option_name = option["name"]
                 
@@ -554,13 +563,20 @@ def get_packages_by_family(
                     "option_order": option["order"]
                 })
                                 
-                print(f"   {option_number}. {option_name} - {price_currency} {option['price']}")
+                rows.append([
+                    str(option_number),
+                    variant_name,
+                    option_name,
+                    format_price(option["price"], currency=price_currency),
+                ])
                 
                 option_number += 1
-            
-            if variant_number < len(package_variants):
-                print("-------------------------------------------------------")
             variant_number += 1
+        print(render_table(
+            ["No", "Variant", "Option", "Harga"],
+            rows,
+            separator_char="-",
+        ))
         print("-------------------------------------------------------")
 
         print("00. Kembali ke menu utama")
@@ -571,13 +587,13 @@ def get_packages_by_family(
             return None
         
         if isinstance(pkg_choice, str) == False or not pkg_choice.isdigit():
-            print("Input tidak valid. Silakan masukan nomor paket.")
+            print(format_status("Input tidak valid. Silakan masukan nomor paket.", success=False))
             continue
         
         selected_pkg = next((p for p in packages if p["number"] == int(pkg_choice)), None)
         
         if not selected_pkg:
-            print("Paket tidak ditemukan. Silakan masukan nomor yang benar.")
+            print(format_status("Paket tidak ditemukan. Silakan masukan nomor yang benar.", success=False))
             continue
         
         show_package_details(

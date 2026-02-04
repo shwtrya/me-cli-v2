@@ -3,7 +3,17 @@ import json
 from app.client.engsel import get_family, get_package_details
 from app.menus.package import show_package_details
 from app.service.auth import AuthInstance
-from app.menus.util import clear_screen, format_quota_byte, pause, display_html
+from app.menus.util import (
+    clear_screen,
+    format_quota_byte,
+    pause,
+    display_html,
+    render_header,
+    render_table,
+    format_price,
+    format_status,
+    style_text,
+)
 from app.client.purchase.ewallet import show_multipayment
 from app.client.purchase.qris import show_qris_payment
 from app.client.purchase.balance import settlement_balance
@@ -18,18 +28,27 @@ def show_hot_menu():
     in_bookmark_menu = True
     while in_bookmark_menu:
         clear_screen()
-        print("=" * WIDTH)
-        print("🔥 Paket  Hot 🔥".center(WIDTH))
-        print("=" * WIDTH)
+        print(render_header("🔥 Paket Hot 🔥", WIDTH, subtitle="Pilih paket favorit kamu"))
         
         hot_packages = []
         
         with open("hot_data/hot.json", "r", encoding="utf-8") as f:
             hot_packages = json.load(f)
 
+        rows = []
         for idx, p in enumerate(hot_packages):
-            print(f"{idx + 1}. {p['family_name']} - {p['variant_name']} - {p['option_name']}")
-            print("-" * WIDTH)
+            rows.append([
+                str(idx + 1),
+                p["family_name"],
+                p["variant_name"],
+                p["option_name"],
+            ])
+
+        print(render_table(
+            ["No", "Family", "Variant", "Option"],
+            rows,
+            separator_char="-",
+        ))
         
         print("00. Kembali ke menu utama")
         print("-" * WIDTH)
@@ -44,7 +63,7 @@ def show_hot_menu():
             
             family_data = get_family(api_key, tokens, family_code, is_enterprise)
             if not family_data:
-                print("Gagal mengambil data family.")
+                print(format_status("Gagal mengambil data family.", success=False))
                 pause()
                 continue
             
@@ -78,18 +97,25 @@ def show_hot_menu2():
     while in_bookmark_menu:
         clear_screen()
         main_package_detail = {}
-        print("=" * WIDTH)
-        print("🔥 Paket  Hot 2 🔥".center(WIDTH))
-        print("=" * WIDTH)
+        print(render_header("🔥 Paket Hot 2 🔥", WIDTH, subtitle="Bundling favorit & hemat"))
         
         hot_packages = []
         
         with open("hot_data/hot2.json", "r", encoding="utf-8") as f:
             hot_packages = json.load(f)
 
+        rows = []
         for idx, p in enumerate(hot_packages):
-            print(f"{idx + 1}. {p['name']}\n   Harga: {p['price']}")
-            print("-" * WIDTH)
+            rows.append([
+                str(idx + 1),
+                p["name"],
+                format_price(p["price"]),
+            ])
+        print(render_table(
+            ["No", "Nama Paket", "Harga"],
+            rows,
+            separator_char="-",
+        ))
         
         print("00. Kembali ke menu utama")
         print("-" * WIDTH)
@@ -101,7 +127,7 @@ def show_hot_menu2():
             selected_package = hot_packages[int(choice) - 1]
             packages = selected_package.get("packages", [])
             if len(packages) == 0:
-                print("Paket tidak tersedia.")
+                print(format_status("Paket tidak tersedia.", success=False))
                 pause()
                 continue
             
@@ -122,7 +148,10 @@ def show_hot_menu2():
                 
                 # Force failed when one of the package detail is None
                 if not package_detail:
-                    print(f"Gagal mengambil detail paket untuk {package['family_code']}.")
+                    print(format_status(
+                        f"Gagal mengambil detail paket untuk {package['family_code']}.",
+                        success=False,
+                    ))
                     return None
                 
                 payment_items.append(
@@ -137,12 +166,13 @@ def show_hot_menu2():
                 )
             
             clear_screen()
-            print("=" * WIDTH)
-            print(f"Name: {selected_package['name']}")
-            print(f"Price: {selected_package['price']}")
-            print(f"Detail: {selected_package['detail']}")
-            print("=" * WIDTH)
-            print("Main Package Details:".center(WIDTH))
+            print(render_header(
+                selected_package["name"],
+                WIDTH,
+                subtitle=selected_package.get("detail", ""),
+                meta_lines=[f"Harga: {format_price(selected_package['price'])}"],
+            ))
+            print(style_text("Main Package Details:", bold=True).center(WIDTH))
             print("-" * WIDTH)
             # Show package 0 details
             
@@ -178,7 +208,7 @@ def show_hot_menu2():
             payment_for = package_family.get("payment_for", "")
                 
             print(f"Nama: {title}")
-            print(f"Harga: Rp {price}")
+            print(f"Harga: {format_price(price)}")
             print(f"Payment For: {payment_for}")
             print(f"Masa Aktif: {validity}")
             print(f"Point: {package_option.get('point', '')}")

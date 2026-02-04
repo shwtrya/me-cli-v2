@@ -5,7 +5,7 @@ load_dotenv()
 
 import sys, json
 from datetime import datetime
-from app.menus.util import clear_screen, pause
+from app.menus.util import clear_screen, pause, render_header, format_price, style_text
 from app.client.engsel import (
     get_balance,
     get_tiering_info,
@@ -31,13 +31,20 @@ WIDTH = 55
 
 def show_main_menu(profile):
     clear_screen()
-    print("=" * WIDTH)
     expired_at_dt = datetime.fromtimestamp(profile["balance_expired_at"]).strftime("%Y-%m-%d")
-    print(f"Nomor: {profile['number']} | Type: {profile['subscription_type']}".center(WIDTH))
-    print(f"Pulsa: Rp {profile['balance']} | Aktif sampai: {expired_at_dt}".center(WIDTH))
-    print(f"{profile['point_info']}".center(WIDTH))
-    print("=" * WIDTH)
-    print("Menu:")
+    balance_text = format_price(profile["balance"])
+    header = render_header(
+        "MyXL CLI",
+        WIDTH,
+        subtitle="Menu Utama",
+        meta_lines=[
+            f"Nomor: {profile['number']} | Type: {profile['subscription_type']}",
+            f"Pulsa: {balance_text} | Aktif sampai: {expired_at_dt}",
+            profile["point_info"],
+        ],
+    )
+    print(header)
+    print(style_text("Menu:", bold=True))
     print("1. Login/Ganti akun")
     print("2. Lihat Paket Saya")
     print("3. Beli Paket 🔥 HOT 🔥")
