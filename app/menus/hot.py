@@ -146,35 +146,48 @@ def show_hot_menu2():
             print("-" * WIDTH)
             # Show package 0 details
             
-            price = main_package_detail["package_option"]["price"]
-            detail = display_html(main_package_detail["package_option"]["tnc"])
-            validity = main_package_detail["package_option"]["validity"]
+            package_option = main_package_detail.get("package_option")
+            if not isinstance(package_option, dict):
+                package_option = {}
+            package_family = main_package_detail.get("package_family")
+            if not isinstance(package_family, dict):
+                package_family = {}
+            package_addon = main_package_detail.get("package_addon")
+            if not isinstance(package_addon, dict):
+                package_addon = {}
+            variant = main_package_detail.get("package_detail_variant") or {}
+            if not isinstance(variant, dict):
+                variant = {}
 
-            option_name = main_package_detail.get("package_option", {}).get("name","") #Vidio
-            family_name = main_package_detail.get("package_family", {}).get("name","") #Unlimited Turbo
-            variant_name = main_package_detail.get("package_detail_variant", "").get("name","") #For Xtra Combo
-            option_name = main_package_detail.get("package_option", {}).get("name","") #Vidio
+            price = package_option.get("price", "")
+            detail = display_html(package_option.get("tnc", ""))
+            validity = package_option.get("validity", "")
+
+            option_name = package_option.get("name", "") #Vidio
+            family_name = package_family.get("name", "") #Unlimited Turbo
+            variant_name = variant.get("name", "") #For Xtra Combo
+            option_name = package_option.get("name", "") #Vidio
             
             title = f"{family_name} - {variant_name} - {option_name}".strip()
             
-            family_code = main_package_detail.get("package_family", {}).get("package_family_code","")
-            parent_code = main_package_detail.get("package_addon", {}).get("parent_code","")
+            family_code = package_family.get("package_family_code", "")
+            parent_code = package_addon.get("parent_code", "")
             if parent_code == "":
                 parent_code = "N/A"
             
-            payment_for = main_package_detail["package_family"]["payment_for"]
+            payment_for = package_family.get("payment_for", "")
                 
             print(f"Nama: {title}")
             print(f"Harga: Rp {price}")
             print(f"Payment For: {payment_for}")
             print(f"Masa Aktif: {validity}")
-            print(f"Point: {main_package_detail['package_option']['point']}")
-            print(f"Plan Type: {main_package_detail['package_family']['plan_type']}")
+            print(f"Point: {package_option.get('point', '')}")
+            print(f"Plan Type: {package_family.get('plan_type', '')}")
             print("-" * WIDTH)
             print(f"Family Code: {family_code}")
             print(f"Parent Code (for addon/dummy): {parent_code}")
             print("-" * WIDTH)
-            benefits = main_package_detail["package_option"]["benefits"]
+            benefits = package_option.get("benefits")
             if benefits and isinstance(benefits, list):
                 print("Benefits:")
                 for benefit in benefits:
