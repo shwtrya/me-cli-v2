@@ -179,6 +179,7 @@ class Auth:
                 tokens = get_new_token(self.api_key, first_rt["refresh_token"], first_rt.get("subscriber_id", ""))
                 if tokens:
                     self.set_active_user(first_rt["number"])
+                    return self.active_user
             return None
         
         if self.last_refresh_time is None or (int(time.time()) - self.last_refresh_time) > 300:
