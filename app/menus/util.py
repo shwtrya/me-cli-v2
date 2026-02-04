@@ -3,6 +3,84 @@ import os
 import re
 import textwrap
 
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+ANSI_CODES = {
+    "reset": "\033[0m",
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "cyan": "\033[36m",
+    "green": "\033[32m",
+    "red": "\033[31m",
+    "yellow": "\033[33m",
+    "magenta": "\033[35m",
+}
+
+def strip_ansi(text: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", text)
+
+def style_text(text: str, color: str | None = None, *, bold: bool = False, dim: bool = False) -> str:
+    if os.getenv("NO_COLOR"):
+        return text
+
+    styles = []
+    if bold:
+        styles.append(ANSI_CODES["bold"])
+    if dim:
+        styles.append(ANSI_CODES["dim"])
+    if color:
+        styles.append(ANSI_CODES.get(color, ""))
+
+    return f"{''.join(styles)}{text}{ANSI_CODES['reset']}" if styles else text
+
+def format_status(text: str, *, success: bool = True) -> str:
+    return style_text(text, "green" if success else "red", bold=True)
+
+def format_price(value: int | float | str, currency: str = "Rp") -> str:
+    return style_text(f"{currency} {value}", "yellow", bold=True)
+
+def render_header(title: str, width: int, subtitle: str | None = None, meta_lines: list[str] | None = None) -> str:
+    separator = "=" * width
+    lines = [separator]
+    lines.append(style_text(title, "cyan", bold=True).center(width))
+    if subtitle:
+        lines.append(style_text(subtitle, dim=True).center(width))
+    if meta_lines:
+        for line in meta_lines:
+            lines.append(line.center(width))
+    lines.append(separator)
+    return "\n".join(lines)
+
+def render_table(
+    headers: list[str],
+    rows: list[list[str]],
+    *,
+    column_spacing: int = 2,
+    separator_char: str = "-",
+) -> str:
+    columns = len(headers)
+    col_widths = [len(strip_ansi(header)) for header in headers]
+    for row in rows:
+        for idx in range(columns):
+            cell = row[idx] if idx < len(row) else ""
+            col_widths[idx] = max(col_widths[idx], len(strip_ansi(str(cell))))
+
+    spacer = " " * column_spacing
+    header_line = spacer.join(
+        header.ljust(col_widths[idx]) for idx, header in enumerate(headers)
+    )
+    separator = separator_char * len(strip_ansi(header_line))
+    body_lines = []
+    for row in rows:
+        cells = []
+        for idx in range(columns):
+            cell = row[idx] if idx < len(row) else ""
+            cell_text = str(cell)
+            cells.append(cell_text.ljust(col_widths[idx] + (len(cell_text) - len(strip_ansi(cell_text)))))
+        body_lines.append(spacer.join(cells))
+
+    return "\n".join([header_line, separator, *body_lines])
+
 def clear_screen():
     print("Clearing screen...")
     os.system('cls' if os.name == 'nt' else 'clear')
