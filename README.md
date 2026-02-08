@@ -38,7 +38,7 @@ python main.py
    ```
 3. Clone this repo:
    ```bash
-   git clone https://github.com/purplemashu/me-cli-sunset
+   git clone https://github.com/shwtrya/me-cli-v2
    ```
 4. Open the folder:
    ```bash
