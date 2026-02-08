@@ -42,7 +42,7 @@ python main.py
    ```
 4. Open the folder:
    ```bash
-   cd me-cli-sunset
+   cd me-cli-v2
    ```
 5. Setup dependencies:
    ```bash
