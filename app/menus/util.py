@@ -2,6 +2,9 @@ from html.parser import HTMLParser
 import os
 import re
 import textwrap
+from shutil import get_terminal_size
+
+from app.service.config import load_config
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -85,6 +88,19 @@ def clear_screen():
     if os.getenv("MYXL_CLI_DEBUG") == "1":
         print("Clearing screen...")
     os.system('cls' if os.name == 'nt' else 'clear')
+    config = load_config()
+    if not config.get("show_banner", True):
+        return
+
+    terminal_width = get_terminal_size(fallback=(80, 24)).columns
+    compact_banner = r"""
+      __  __ __  ____ __
+     / / / // / / __// /
+    / /_/ // / / /_ / / 
+    \__, //_/ /___//_/  
+   /____/   MYXL CLI    
+"""
+
     ascii_art = r"""
             _____                    _____          
            /\    \                  /\    \         
@@ -109,7 +125,12 @@ def clear_screen():
            \/____/                  \/____/         
 """
 
-    print(ascii_art)
+    if terminal_width < 60:
+        print("MYXL CLI")
+    elif terminal_width < 90:
+        print(compact_banner)
+    else:
+        print(ascii_art)
 
 def pause():
     input("\nPress enter to continue...")
