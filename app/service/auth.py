@@ -4,7 +4,13 @@ import time
 from typing import Any
 import importlib.util
 
-from cryptography.fernet import Fernet, InvalidToken
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+    has_crypto = True
+except ImportError:
+    Fernet = None
+    InvalidToken = Exception
+    has_crypto = False
 
 keyring = None
 if importlib.util.find_spec("keyring") is not None:
@@ -57,10 +63,13 @@ class Auth:
             self.data_dir = os.path.expanduser("~/.myxl-cli")
             self.refresh_tokens_path = os.path.join(self.data_dir, "refresh-tokens.json")
             self.active_number_path = os.path.join(self.data_dir, "active.number")
-            self.encryption_enabled = os.getenv("MYXL_CLI_ENCRYPT_TOKENS", "1") not in {"0", "false", "False"}
+            self._warned_plaintext_storage = False
+            env_encrypt = os.getenv("MYXL_CLI_ENCRYPT_TOKENS", "1") not in {"0", "false", "False"}
+            self.encryption_enabled = env_encrypt and has_crypto
 
             self._ensure_data_dir()
             self._migrate_legacy_files()
+            self._warn_if_plaintext_storage()
 
             if os.path.exists(self.refresh_tokens_path):
                 self.load_tokens()
@@ -77,6 +86,8 @@ class Auth:
         os.makedirs(self.data_dir, exist_ok=True)
 
     def _get_encryption_key(self) -> bytes:
+        if not has_crypto:
+            raise RuntimeError("Token encryption requires the optional cryptography dependency.")
         env_key = os.getenv("MYXL_CLI_TOKEN_KEY")
         if env_key:
             return env_key.encode("utf-8")
@@ -100,12 +111,30 @@ class Auth:
         return new_key
 
     def _encrypt_payload(self, payload: str) -> str:
+        if not has_crypto:
+            raise RuntimeError("Token encryption requires the optional cryptography dependency.")
         fernet = Fernet(self._get_encryption_key())
         return fernet.encrypt(payload.encode("utf-8")).decode("utf-8")
 
     def _decrypt_payload(self, payload: str) -> str:
+        if not has_crypto:
+            raise RuntimeError("Token encryption requires the optional cryptography dependency.")
         fernet = Fernet(self._get_encryption_key())
         return fernet.decrypt(payload.encode("utf-8")).decode("utf-8")
+
+    def _warn_if_plaintext_storage(self):
+        if self.encryption_enabled or self._warned_plaintext_storage:
+            return
+        reason = "MYXL_CLI_ENCRYPT_TOKENS=0"
+        if not has_crypto:
+            reason = "cryptography is not installed"
+        print(
+            "WARNING: Token encryption is disabled "
+            f"({reason}). Tokens will be stored in plaintext. "
+            "This speeds up installation but is less secure. "
+            "Install the secure extra to enable encryption."
+        )
+        self._warned_plaintext_storage = True
 
     def _migrate_legacy_files(self):
         legacy_tokens_path = "refresh-tokens.json"
@@ -126,6 +155,10 @@ class Auth:
             raw = json.load(f)
 
         if isinstance(raw, dict) and raw.get("encrypted"):
+            if not has_crypto:
+                print("Encrypted tokens found but cryptography is not installed.")
+                print("Install the secure extra to decrypt stored tokens.")
+                return []
             try:
                 decrypted = self._decrypt_payload(raw.get("payload", ""))
             except InvalidToken:
@@ -279,6 +312,7 @@ class Auth:
             encrypted = self._encrypt_payload(payload)
             data = {"encrypted": True, "payload": encrypted}
         else:
+            self._warn_if_plaintext_storage()
             data = self.refresh_tokens
 
         with open(self.refresh_tokens_path, "w", encoding="utf-8") as f:
