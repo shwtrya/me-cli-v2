@@ -2,7 +2,7 @@ import base64
 import os
 import json
 import uuid
-import requests
+from app.client.http import send_request, HttpClientError
 from urllib.parse import urlparse
 
 from datetime import datetime, timezone, timedelta
@@ -64,7 +64,7 @@ def get_otp(contact: str) -> str:
 
     print("Requesting OTP...")
     try:
-        response = requests.request("GET", url, data=payload, headers=headers, params=querystring, timeout=30)
+        response = send_request("GET", url, data=payload, headers=headers, params=querystring, timeout=30)
         print("response body", response.text)
         json_body = json.loads(response.text)
     
@@ -73,8 +73,8 @@ def get_otp(contact: str) -> str:
             raise ValueError("Subscriber ID not found in response")
         
         return json_body["subscriber_id"]
-    except Exception as e:
-        print(f"Error requesting OTP: {e}")
+    except HttpClientError as e:
+        print(f"Error requesting OTP: {e.user_message}")
         return None
 
 def extend_session(subscriber_id: str) -> str:
@@ -107,7 +107,7 @@ def extend_session(subscriber_id: str) -> str:
     
     print("Extending session...")
     try:
-        response = requests.get(url, headers=headers, params=querystring, timeout=30)
+        response = send_request("GET", url, headers=headers, params=querystring, timeout=30)
         if response.status_code != 200:
             print(f"Failed to extend session: {response.status_code} - {response.text}")
             return None
@@ -116,8 +116,8 @@ def extend_session(subscriber_id: str) -> str:
         exchange_code = data.get("data", {}).get("exchange_code")
         
         return exchange_code
-    except Exception as e:
-        print(f"Error extending session: {e}")
+    except HttpClientError as e:
+        print(f"Error extending session: {e.user_message}")
         return None
 
 def submit_otp(
@@ -172,7 +172,7 @@ def submit_otp(
 
     print("Submitting OTP...")
     try:
-        response = requests.post(url, data=payload, headers=headers, timeout=30)
+        response = send_request("POST", url, data=payload, headers=headers, timeout=30)
         json_body = json.loads(response.text)
                 
         if "error" in json_body:
@@ -181,8 +181,8 @@ def submit_otp(
         
         print("Login successful.")
         return json_body
-    except requests.RequestException as e:
-        print(f"[Error submit_otp]: {e}")
+    except HttpClientError as e:
+        print(f"[Error submit_otp]: {e.user_message}")
         return None
 
 def get_new_token(api_key: str, refresh_token: str, subscriber_id: str) -> str:
@@ -212,7 +212,11 @@ def get_new_token(api_key: str, refresh_token: str, subscriber_id: str) -> str:
     }
 
     print("Refreshing token...")
-    resp = requests.post(url, headers=headers, data=data, timeout=30)
+    try:
+        resp = send_request("POST", url, headers=headers, data=data, timeout=30)
+    except HttpClientError as e:
+        print(f"Failed to refresh token: {e.user_message}")
+        return None
     if resp.status_code == 400:
         if resp.json().get("error_description") != "Session not active":
             print(f"Failed to refresh token: {resp.status_code} - {resp.text}")
@@ -284,9 +288,9 @@ def get_auth_code(tokens: dict, pin: str, msisdn: str):
     }
 
     try:
-        resp = requests.post(url, headers=headers, json=body, timeout=30)
-    except requests.RequestException as e:
-        print(f"[get_auth_code] Request error: {e}")
+        resp = send_request("POST", url, headers=headers, json=body, timeout=30)
+    except HttpClientError as e:
+        print(f"[get_auth_code] Request error: {e.user_message}")
         return None
 
 

@@ -1,7 +1,7 @@
 import os
 import json
 import uuid
-import requests
+from app.client.http import send_request, HttpClientError
 
 from datetime import datetime, timezone
 
@@ -55,7 +55,11 @@ def send_api_request(
     }
 
     url = f"{BASE_API_URL}/{path}"
-    resp = requests.post(url, headers=headers, data=json.dumps(body), timeout=30)
+    try:
+        resp = send_request("POST", url, headers=headers, data=json.dumps(body), timeout=30)
+    except HttpClientError as exc:
+        print(f"[request error] {exc.user_message}")
+        return {"status": "ERROR", "error": exc.user_message}
     
     # print(f"Headers: {json.dumps(headers, indent=2)}")
     # print(f"Response body: {resp.text}")
