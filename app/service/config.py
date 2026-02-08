@@ -12,6 +12,7 @@ DEFAULT_CONFIG = {
     "no_color": False,
     "table_width": 55,
     "purchase_delay_seconds": 0,
+    "show_banner": True,
 }
 
 CONFIG_ENV_KEY = "MYXL_CONFIG_PATH"

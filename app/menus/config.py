@@ -13,6 +13,7 @@ def show_config_menu() -> dict:
         print(f"2. NO_COLOR: {'ON' if config['no_color'] else 'OFF'}")
         print(f"3. Lebar tabel: {config['table_width']}")
         print(f"4. Delay loop pembelian (detik): {config['purchase_delay_seconds']}")
+        print(f"5. Tampilkan banner: {'ON' if config['show_banner'] else 'OFF'}")
         print("S. Simpan konfigurasi")
         print("00. Kembali")
         print("-------------------------------------------------------")
@@ -37,6 +38,11 @@ def show_config_menu() -> dict:
             config["purchase_delay_seconds"] = prompt_int(
                 "Delay loop pembelian (detik)",
                 config["purchase_delay_seconds"],
+            )
+        elif choice == "5":
+            config["show_banner"] = prompt_bool(
+                "Tampilkan banner ASCII? (y/n)",
+                config["show_banner"],
             )
         elif choice == "s":
             save_config(config)
