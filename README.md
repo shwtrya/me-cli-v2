@@ -4,25 +4,30 @@
 
 CLI client for a certain Indonesian mobile internet service provider.
 
-## Prerequisites
+## ✨ Highlights
+- Simple, interactive CLI workflow.
+- Supports login, package browsing, purchases, and history.
+- Optional config file for defaults and styling.
+
+## ✅ Prerequisites
 - Python 3.10+ (recommended).
 - Internet connection.
 - Environment variables from the official channel.
 
-## Environment Variables
+## 🔐 Environment Variables
 1. Open [OUR TELEGRAM CHANNEL](https://t.me/alyxcli).
 2. Copy the provided environment variables.
 3. Paste them into a `.env` file in the same directory as `main.py`.
 
 > Tip: You can use any text editor, for example `nano .env`.
 
-## Quick Start (Linux/macOS)
+## 🚀 Quick Start (Linux/macOS)
 ```bash
 bash setup.sh
 python main.py
 ```
 
-## Termux Setup (Android)
+## 📱 Termux Setup (Android)
 1. Update & upgrade Termux:
    ```bash
    pkg update && pkg upgrade -y
@@ -48,11 +53,12 @@ python main.py
    python main.py
    ```
 
-## Usage Notes
+## 🧭 Usage Notes
 - Keep your `.env` file private.
 - If you encounter issues with tokens or sessions, re-run the login flow from the menu.
+- Configuration can be adjusted from the app menu (e.g. table width, delay).
 
-## Info
+## ℹ️ Info
 ### PS for Certain Indonesian mobile internet service provider
 Instead of just delisting the package from the app, ensure the user cannot purchase it.
 What's the point of strong client side security when the server don't enforce it?
