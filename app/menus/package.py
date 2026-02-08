@@ -16,6 +16,7 @@ from app.menus.util import (
     format_price,
     format_status,
     style_text,
+    get_table_width,
 )
 from app.client.purchase.qris import show_qris_payment
 from app.client.purchase.ewallet import show_multipayment
@@ -529,9 +530,10 @@ def get_packages_by_family(
     while in_package_menu:
         clear_screen()
         # print(f"[GPBF-283]:\n{json.dumps(data, indent=2)}")
+        width = get_table_width()
         header = render_header(
             "Daftar Paket",
-            55,
+            width,
             subtitle=data["package_family"]["name"],
             meta_lines=[
                 f"Family Code: {family_code}",
@@ -572,15 +574,18 @@ def get_packages_by_family(
                 
                 option_number += 1
             variant_number += 1
-        print(render_table(
-            ["No", "Variant", "Option", "Harga"],
-            rows,
-            separator_char="-",
-        ))
-        print("-------------------------------------------------------")
+        print(
+            render_table(
+                ["No", "Variant", "Option", "Harga"],
+                rows,
+                separator_char="-",
+                width=width,
+            )
+        )
+        print("-" * width)
 
         print("00. Kembali ke menu utama")
-        print("-------------------------------------------------------")
+        print("-" * width)
         pkg_choice = input("Pilih paket (nomor): ")
         if pkg_choice == "00":
             in_package_menu = False

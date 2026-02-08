@@ -13,13 +13,12 @@ from app.menus.util import (
     format_price,
     format_status,
     style_text,
+    get_table_width,
 )
 from app.client.purchase.ewallet import show_multipayment
 from app.client.purchase.qris import show_qris_payment
 from app.client.purchase.balance import settlement_balance
 from app.type_dict import PaymentItem
-
-WIDTH = 55
 
 def show_hot_menu():
     api_key = AuthInstance.api_key
@@ -28,7 +27,8 @@ def show_hot_menu():
     in_bookmark_menu = True
     while in_bookmark_menu:
         clear_screen()
-        print(render_header("🔥 Paket Hot 🔥", WIDTH, subtitle="Pilih paket favorit kamu"))
+        width = get_table_width()
+        print(render_header("🔥 Paket Hot 🔥", width, subtitle="Pilih paket favorit kamu"))
         
         hot_packages = []
         
@@ -44,14 +44,17 @@ def show_hot_menu():
                 p["option_name"],
             ])
 
-        print(render_table(
-            ["No", "Family", "Variant", "Option"],
-            rows,
-            separator_char="-",
-        ))
+        print(
+            render_table(
+                ["No", "Family", "Variant", "Option"],
+                rows,
+                separator_char="-",
+                width=width,
+            )
+        )
         
         print("00. Kembali ke menu utama")
-        print("-" * WIDTH)
+        print("-" * width)
         choice = input("Pilih paket (nomor): ")
         if choice == "00":
             in_bookmark_menu = False
@@ -97,7 +100,8 @@ def show_hot_menu2():
     while in_bookmark_menu:
         clear_screen()
         main_package_detail = {}
-        print(render_header("🔥 Paket Hot 2 🔥", WIDTH, subtitle="Bundling favorit & hemat"))
+        width = get_table_width()
+        print(render_header("🔥 Paket Hot 2 🔥", width, subtitle="Bundling favorit & hemat"))
         
         hot_packages = []
         
@@ -111,14 +115,17 @@ def show_hot_menu2():
                 p["name"],
                 format_price(p["price"]),
             ])
-        print(render_table(
-            ["No", "Nama Paket", "Harga"],
-            rows,
-            separator_char="-",
-        ))
+        print(
+            render_table(
+                ["No", "Nama Paket", "Harga"],
+                rows,
+                separator_char="-",
+                width=width,
+            )
+        )
         
         print("00. Kembali ke menu utama")
-        print("-" * WIDTH)
+        print("-" * width)
         choice = input("Pilih paket (nomor): ")
         if choice == "00":
             in_bookmark_menu = False
@@ -168,12 +175,12 @@ def show_hot_menu2():
             clear_screen()
             print(render_header(
                 selected_package["name"],
-                WIDTH,
+                width,
                 subtitle=selected_package.get("detail", ""),
                 meta_lines=[f"Harga: {format_price(selected_package['price'])}"],
             ))
-            print(style_text("Main Package Details:", bold=True).center(WIDTH))
-            print("-" * WIDTH)
+            print(style_text("Main Package Details:", bold=True).center(width))
+            print("-" * width)
             # Show package 0 details
             
             package_option = main_package_detail.get("package_option")
@@ -213,15 +220,15 @@ def show_hot_menu2():
             print(f"Masa Aktif: {validity}")
             print(f"Point: {package_option.get('point', '')}")
             print(f"Plan Type: {package_family.get('plan_type', '')}")
-            print("-" * WIDTH)
+            print("-" * width)
             print(f"Family Code: {family_code}")
             print(f"Parent Code (for addon/dummy): {parent_code}")
-            print("-" * WIDTH)
+            print("-" * width)
             benefits = package_option.get("benefits")
             if benefits and isinstance(benefits, list):
                 print("Benefits:")
                 for benefit in benefits:
-                    print("-" * WIDTH)
+                    print("-" * width)
                     print(f" Name: {benefit['name']}")
                     print(f"  Item id: {benefit['item_id']}")
                     data_type = benefit['data_type']
@@ -240,11 +247,11 @@ def show_hot_menu2():
                     if benefit["is_unlimited"]:
                         print("  Unlimited: Yes")
 
-            print("-" * WIDTH)
+            print("-" * width)
             print(f"SnK MyXL:\n{detail}")
-            print("-" * WIDTH)
+            print("-" * width)
                 
-            print("=" * WIDTH)
+            print("=" * width)
             
             payment_for = selected_package.get("payment_for", "BUY_PACKAGE")
             ask_overwrite = selected_package.get("ask_overwrite", False)

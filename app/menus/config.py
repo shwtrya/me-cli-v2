@@ -11,9 +11,13 @@ def show_config_menu() -> dict:
         print("-------------------------------------------------------")
         print(f"1. Default enterprise: {'ON' if config['enterprise_default'] else 'OFF'}")
         print(f"2. NO_COLOR: {'ON' if config['no_color'] else 'OFF'}")
-        print(f"3. Lebar tabel: {config['table_width']}")
-        print(f"4. Delay loop pembelian (detik): {config['purchase_delay_seconds']}")
-        print(f"5. Tampilkan banner: {'ON' if config['show_banner'] else 'OFF'}")
+        print(f"3. Auto table width: {'ON' if config.get('auto_table_width') else 'OFF'}")
+        table_width_label = (
+            "AUTO" if config.get("auto_table_width") else str(config["table_width"])
+        )
+        print(f"4. Lebar tabel: {table_width_label}")
+        print(f"5. Delay loop pembelian (detik): {config['purchase_delay_seconds']}")
+        print(f"6. Tampilkan banner: {'ON' if config['show_banner'] else 'OFF'}")
         print("S. Simpan konfigurasi")
         print("00. Kembali")
         print("-------------------------------------------------------")
@@ -30,16 +34,21 @@ def show_config_menu() -> dict:
                 config["no_color"],
             )
         elif choice == "3":
+            config["auto_table_width"] = prompt_bool(
+                "Aktifkan auto table width? (y/n)",
+                config.get("auto_table_width", False),
+            )
+        elif choice == "4":
             config["table_width"] = prompt_int(
                 "Lebar tabel",
                 config["table_width"],
             )
-        elif choice == "4":
+        elif choice == "5":
             config["purchase_delay_seconds"] = prompt_int(
                 "Delay loop pembelian (detik)",
                 config["purchase_delay_seconds"],
             )
-        elif choice == "5":
+        elif choice == "6":
             config["show_banner"] = prompt_bool(
                 "Tampilkan banner ASCII? (y/n)",
                 config["show_banner"],

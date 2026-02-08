@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from shutil import get_terminal_size
 
 try:
     import yaml
@@ -10,6 +11,7 @@ except ImportError:  # pragma: no cover - optional dependency
 DEFAULT_CONFIG = {
     "enterprise_default": False,
     "no_color": False,
+    "auto_table_width": False,
     "table_width": 55,
     "purchase_delay_seconds": 0,
     "show_banner": True,
@@ -79,6 +81,14 @@ def apply_config(config: dict) -> None:
         os.environ["NO_COLOR"] = "1"
     else:
         os.environ.pop("NO_COLOR", None)
+
+
+def resolve_table_width(config: dict | None = None) -> int:
+    config = config or load_config()
+    table_width = config.get("table_width")
+    if table_width is None or config.get("auto_table_width"):
+        return get_terminal_size(fallback=(80, 24)).columns
+    return table_width
 
 
 def input_with_default(prompt: str, default_value: str) -> str:
