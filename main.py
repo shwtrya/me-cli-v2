@@ -65,6 +65,7 @@ def show_main_menu(profile, width: int):
     print("15. Konfigurasi")
     print("R. Register")
     print("N. Notifikasi")
+    print("S. Sentry Mode")
     print("V. Validate msisdn")
     print("00. Bookmark Paket")
     print("99. Tutup aplikasi")
@@ -191,6 +192,9 @@ def run_notifications_command(args):
         return
     show_notification_menu()
 
+def run_sentry_command(args):
+    enter_sentry_mode()
+
 def build_parser():
     parser = argparse.ArgumentParser(description="MyXL CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -251,6 +255,9 @@ def build_parser():
 
     notifications_parser = subparsers.add_parser("notifications", help="Notifikasi")
     notifications_parser.set_defaults(func=run_notifications_command)
+
+    sentry_parser = subparsers.add_parser("sentry", help="Masuk ke Sentry Mode")
+    sentry_parser.set_defaults(func=run_sentry_command)
 
     return parser
 
