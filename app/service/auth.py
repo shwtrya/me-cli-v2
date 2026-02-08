@@ -1,6 +1,15 @@
 import os
 import json
 import time
+from typing import Any
+import importlib.util
+
+from cryptography.fernet import Fernet, InvalidToken
+
+keyring = None
+if importlib.util.find_spec("keyring") is not None:
+    import keyring
+
 from app.client.ciam import get_new_token
 from app.client.engsel import get_profile
 from app.util import ensure_api_key
@@ -44,13 +53,19 @@ class Auth:
     def __init__(self):
         if not self._initialized_:
             self.api_key = ensure_api_key()
-            
-            if os.path.exists("refresh-tokens.json"):
+
+            self.data_dir = os.path.expanduser("~/.myxl-cli")
+            self.refresh_tokens_path = os.path.join(self.data_dir, "refresh-tokens.json")
+            self.active_number_path = os.path.join(self.data_dir, "active.number")
+            self.encryption_enabled = os.getenv("MYXL_CLI_ENCRYPT_TOKENS", "1") not in {"0", "false", "False"}
+
+            self._ensure_data_dir()
+            self._migrate_legacy_files()
+
+            if os.path.exists(self.refresh_tokens_path):
                 self.load_tokens()
             else:
-                # Create empty file
-                with open("refresh-tokens.json", "w", encoding="utf-8") as f:
-                    json.dump([], f, indent=4)
+                self.write_tokens_to_file()
 
             # Select active user from file if available
             self.load_active_number()
@@ -58,19 +73,86 @@ class Auth:
 
             self._initialized_ = True
             
-    def load_tokens(self):
-        with open("refresh-tokens.json", "r", encoding="utf-8") as f:
-            refresh_tokens = json.load(f)
-            
-            if len(refresh_tokens) !=  0:
-                self.refresh_tokens = []
+    def _ensure_data_dir(self):
+        os.makedirs(self.data_dir, exist_ok=True)
 
-            # Validate and load tokens
-            for rt in refresh_tokens:
-                if "number" in rt and "refresh_token" in rt:
-                    self.refresh_tokens.append(rt)
-                else:
-                    print(f"Invalid token entry: {rt}")
+    def _get_encryption_key(self) -> bytes:
+        env_key = os.getenv("MYXL_CLI_TOKEN_KEY")
+        if env_key:
+            return env_key.encode("utf-8")
+
+        if keyring:
+            stored = keyring.get_password("myxl-cli", "refresh-tokens")
+            if stored:
+                return stored.encode("utf-8")
+            new_key = Fernet.generate_key()
+            keyring.set_password("myxl-cli", "refresh-tokens", new_key.decode("utf-8"))
+            return new_key
+
+        key_path = os.path.join(self.data_dir, "token.key")
+        if os.path.exists(key_path):
+            with open(key_path, "rb") as f:
+                return f.read()
+        new_key = Fernet.generate_key()
+        with open(key_path, "wb") as f:
+            f.write(new_key)
+        os.chmod(key_path, 0o600)
+        return new_key
+
+    def _encrypt_payload(self, payload: str) -> str:
+        fernet = Fernet(self._get_encryption_key())
+        return fernet.encrypt(payload.encode("utf-8")).decode("utf-8")
+
+    def _decrypt_payload(self, payload: str) -> str:
+        fernet = Fernet(self._get_encryption_key())
+        return fernet.decrypt(payload.encode("utf-8")).decode("utf-8")
+
+    def _migrate_legacy_files(self):
+        legacy_tokens_path = "refresh-tokens.json"
+        legacy_active_path = "active.number"
+
+        if os.path.exists(legacy_tokens_path) and not os.path.exists(self.refresh_tokens_path):
+            with open(legacy_tokens_path, "r", encoding="utf-8") as f:
+                legacy_tokens = json.load(f)
+            self.refresh_tokens = legacy_tokens if isinstance(legacy_tokens, list) else []
+            self.write_tokens_to_file()
+            os.remove(legacy_tokens_path)
+
+        if os.path.exists(legacy_active_path) and not os.path.exists(self.active_number_path):
+            os.replace(legacy_active_path, self.active_number_path)
+
+    def _load_token_payload(self) -> list[dict[str, Any]]:
+        with open(self.refresh_tokens_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+
+        if isinstance(raw, dict) and raw.get("encrypted"):
+            try:
+                decrypted = self._decrypt_payload(raw.get("payload", ""))
+            except InvalidToken:
+                print("Failed to decrypt refresh tokens. Check MYXL_CLI_TOKEN_KEY or keyring.")
+                return []
+            return json.loads(decrypted)
+
+        if isinstance(raw, list):
+            if self.encryption_enabled:
+                self.refresh_tokens = raw
+                self.write_tokens_to_file()
+            return raw
+
+        return []
+
+    def load_tokens(self):
+        refresh_tokens = self._load_token_payload()
+
+        if len(refresh_tokens) !=  0:
+            self.refresh_tokens = []
+
+        # Validate and load tokens
+        for rt in refresh_tokens:
+            if "number" in rt and "refresh_token" in rt:
+                self.refresh_tokens.append(rt)
+            else:
+                print(f"Invalid token entry: {rt}")
 
     def add_refresh_token(self, number: int, refresh_token: str):
         # Check if number already exist, if yes, replace it, if not append
@@ -100,8 +182,7 @@ class Auth:
         self.refresh_tokens = [rt for rt in self.refresh_tokens if rt["number"] != number]
         
         # Save to file
-        with open("refresh-tokens.json", "w", encoding="utf-8") as f:
-            json.dump(self.refresh_tokens, f, indent=4)
+        self.write_tokens_to_file()
         
         # If the removed user was the active user, select a new active user if available
         if self.active_user and self.active_user["number"] == number:
@@ -193,20 +274,27 @@ class Auth:
         return active_user["tokens"] if active_user else None
     
     def write_tokens_to_file(self):
-        with open("refresh-tokens.json", "w", encoding="utf-8") as f:
-            json.dump(self.refresh_tokens, f, indent=4)
+        if self.encryption_enabled:
+            payload = json.dumps(self.refresh_tokens, indent=4)
+            encrypted = self._encrypt_payload(payload)
+            data = {"encrypted": True, "payload": encrypted}
+        else:
+            data = self.refresh_tokens
+
+        with open(self.refresh_tokens_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
     
     def write_active_number(self):
         if self.active_user:
-            with open("active.number", "w", encoding="utf-8") as f:
+            with open(self.active_number_path, "w", encoding="utf-8") as f:
                 f.write(str(self.active_user["number"]))
         else:
-            if os.path.exists("active.number"):
-                os.remove("active.number")
+            if os.path.exists(self.active_number_path):
+                os.remove(self.active_number_path)
     
     def load_active_number(self):
-        if os.path.exists("active.number"):
-            with open("active.number", "r", encoding="utf-8") as f:
+        if os.path.exists(self.active_number_path):
+            with open(self.active_number_path, "r", encoding="utf-8") as f:
                 number_str = f.read().strip()
                 if number_str.isdigit():
                     number = int(number_str)
