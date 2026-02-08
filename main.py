@@ -23,20 +23,21 @@ from app.menus.purchase import purchase_by_family
 from app.menus.famplan import show_family_info
 from app.menus.circle import show_circle_info
 from app.menus.notification import show_notification_menu
+from app.menus.config import show_config_menu
 from app.menus.store.segments import show_store_segments_menu
 from app.menus.store.search import show_family_list_menu, show_store_packages_menu
 from app.menus.store.redemables import show_redeemables_menu
 from app.client.registration import dukcapil
+from app.service.config import apply_config, load_config, prompt_bool, prompt_int
 
-WIDTH = 55
 
-def show_main_menu(profile):
+def show_main_menu(profile, width: int):
     clear_screen()
     expired_at_dt = datetime.fromtimestamp(profile["balance_expired_at"]).strftime("%Y-%m-%d")
     balance_text = format_price(profile["balance"])
     header = render_header(
         "MyXL CLI",
-        WIDTH,
+        width,
         subtitle="Menu Utama",
         meta_lines=[
             f"Nomor: {profile['number']} | Type: {profile['subscription_type']}",
@@ -60,6 +61,7 @@ def show_main_menu(profile):
     print("12. Store Family List")
     print("13. Store Packages")
     print("14. Redemables")
+    print("15. Konfigurasi")
     print("R. Register")
     print("N. Notifikasi")
     print("V. Validate msisdn")
@@ -79,10 +81,6 @@ def ensure_active_user():
         else:
             print("No user selected or failed to load user.")
     return active_user
-
-def prompt_yes_no(message: str) -> bool:
-    answer = input(message).strip().lower()
-    return answer == "y"
 
 def run_login_command(args):
     selected_user_number = show_account_menu()
@@ -128,6 +126,8 @@ def run_purchase_command(args):
     if not active_user:
         return
 
+    config = load_config()
+
     if args.option_code:
         show_package_details(
             AuthInstance.api_key,
@@ -145,30 +145,28 @@ def run_purchase_command(args):
         family_code = args.family_code
 
     if args.start_from_option is None:
-        start_from_option = input("Start purchasing from option number (default 1): ")
-        try:
-            start_from_option = int(start_from_option)
-        except ValueError:
-            start_from_option = 1
+        start_from_option = prompt_int(
+            "Start purchasing from option number",
+            1,
+        )
     else:
         start_from_option = args.start_from_option
 
     if args.use_decoy is None:
-        use_decoy = prompt_yes_no("Use decoy package? (y/n): ")
+        use_decoy = prompt_bool("Use decoy package? (y/n)", False)
     else:
         use_decoy = args.use_decoy
 
     if args.pause_on_success is None:
-        pause_on_success = prompt_yes_no("Pause on each successful purchase? (y/n): ")
+        pause_on_success = prompt_bool("Pause on each successful purchase? (y/n)", False)
     else:
         pause_on_success = args.pause_on_success
 
     if args.delay_seconds is None:
-        delay_seconds = input("Delay seconds between purchases (0 for no delay): ")
-        try:
-            delay_seconds = int(delay_seconds)
-        except ValueError:
-            delay_seconds = 0
+        delay_seconds = prompt_int(
+            "Delay seconds between purchases",
+            config["purchase_delay_seconds"],
+        )
     else:
         delay_seconds = args.delay_seconds
 
@@ -195,6 +193,7 @@ def run_notifications_command(args):
 def build_parser():
     parser = argparse.ArgumentParser(description="MyXL CLI")
     subparsers = parser.add_subparsers(dest="command")
+    config = load_config()
 
     login_parser = subparsers.add_parser("login", help="Login atau ganti akun")
     login_parser.add_argument("--msisdn", help="MSISDN untuk divalidasi")
@@ -206,7 +205,7 @@ def build_parser():
     packages_parser.add_argument(
         "--enterprise",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=config["enterprise_default"],
         help="Gunakan mode enterprise",
     )
     packages_parser.set_defaults(func=run_packages_command)
@@ -217,7 +216,7 @@ def build_parser():
     purchase_parser.add_argument(
         "--enterprise",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=config["enterprise_default"],
         help="Gunakan mode enterprise",
     )
     purchase_parser.add_argument(
@@ -263,6 +262,8 @@ def run_cli():
     return True
 
 def main():
+    config = load_config()
+    apply_config(config)
     
     while True:
         active_user = AuthInstance.get_active_user()
@@ -290,7 +291,7 @@ def main():
                 "point_info": point_info
             }
 
-            show_main_menu(profile)
+            show_main_menu(profile, config["table_width"])
 
             choice = input("Pilih menu: ")
             # Testing shortcuts
@@ -330,19 +331,16 @@ def main():
                 if family_code == "99":
                     continue
 
-                start_from_option = input("Start purchasing from option number (default 1): ")
-                try:
-                    start_from_option = int(start_from_option)
-                except ValueError:
-                    start_from_option = 1
-
-                use_decoy = input("Use decoy package? (y/n): ").lower() == 'y'
-                pause_on_success = input("Pause on each successful purchase? (y/n): ").lower() == 'y'
-                delay_seconds = input("Delay seconds between purchases (0 for no delay): ")
-                try:
-                    delay_seconds = int(delay_seconds)
-                except ValueError:
-                    delay_seconds = 0
+                start_from_option = prompt_int(
+                    "Start purchasing from option number",
+                    1,
+                )
+                use_decoy = prompt_bool("Use decoy package? (y/n)", False)
+                pause_on_success = prompt_bool("Pause on each successful purchase? (y/n)", False)
+                delay_seconds = prompt_int(
+                    "Delay seconds between purchases",
+                    config["purchase_delay_seconds"],
+                )
                 purchase_by_family(
                     family_code,
                     use_decoy,
@@ -357,23 +355,34 @@ def main():
             elif choice == "10":
                 show_circle_info(AuthInstance.api_key, active_user["tokens"])
             elif choice == "11":
-                input_11 = input("Is enterprise store? (y/n): ").lower()
-                is_enterprise = input_11 == 'y'
+                is_enterprise = prompt_bool(
+                    "Is enterprise store? (y/n)",
+                    config["enterprise_default"],
+                )
                 show_store_segments_menu(is_enterprise)
             elif choice == "12":
-                input_12_1 = input("Is enterprise? (y/n): ").lower()
-                is_enterprise = input_12_1 == 'y'
+                is_enterprise = prompt_bool(
+                    "Is enterprise? (y/n)",
+                    config["enterprise_default"],
+                )
                 show_family_list_menu(profile['subscription_type'], is_enterprise)
             elif choice == "13":
-                input_13_1 = input("Is enterprise? (y/n): ").lower()
-                is_enterprise = input_13_1 == 'y'
-                
+                is_enterprise = prompt_bool(
+                    "Is enterprise? (y/n)",
+                    config["enterprise_default"],
+                )
+
                 show_store_packages_menu(profile['subscription_type'], is_enterprise)
             elif choice == "14":
-                input_14_1 = input("Is enterprise? (y/n): ").lower()
-                is_enterprise = input_14_1 == 'y'
-                
+                is_enterprise = prompt_bool(
+                    "Is enterprise? (y/n)",
+                    config["enterprise_default"],
+                )
+
                 show_redeemables_menu(is_enterprise)
+            elif choice == "15":
+                config = show_config_menu()
+                apply_config(config)
             elif choice == "00":
                 show_bookmark_menu()
             elif choice == "99":
@@ -418,6 +427,8 @@ def main():
 
 if __name__ == "__main__":
     try:
+        config = load_config()
+        apply_config(config)
         print("Checking for updates...")
         need_update = check_for_updates()
         if need_update:
