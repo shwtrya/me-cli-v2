@@ -4,47 +4,61 @@
 
 CLI client for a certain Indonesian mobile internet service provider.
 
-# How to get environtment Variables
-Go to [OUR TELEGRAM CHANNEL](https://t.me/alyxcli)
-Copy the provided environment variables and paste it into a text file named `.env` in the same directory as `main.py`.
-You can use nano or any text editor to create the file.
+## Prerequisites
+- Python 3.10+ (recommended).
+- Internet connection.
+- Environment variables from the official channel.
 
-# How to run with TERMUX
-1. Update & Upgrade Termux
-```
-pkg update && pkg upgrade -y
-```
-2. Install Git
-```
-pkg install git -y
-```
-3. Clone this repo
-```
-git clone https://github.com/purplemashu/me-cli-sunset
-```
-4. Open the folder
-```
-cd me-cli-sunset
-```
-5. Setup
-```
+## Environment Variables
+1. Open [OUR TELEGRAM CHANNEL](https://t.me/alyxcli).
+2. Copy the provided environment variables.
+3. Paste them into a `.env` file in the same directory as `main.py`.
+
+> Tip: You can use any text editor, for example `nano .env`.
+
+## Quick Start (Linux/macOS)
+```bash
 bash setup.sh
-```
-6. Run the script
-```
 python main.py
 ```
 
-# Info
+## Termux Setup (Android)
+1. Update & upgrade Termux:
+   ```bash
+   pkg update && pkg upgrade -y
+   ```
+2. Install Git:
+   ```bash
+   pkg install git -y
+   ```
+3. Clone this repo:
+   ```bash
+   git clone https://github.com/purplemashu/me-cli-sunset
+   ```
+4. Open the folder:
+   ```bash
+   cd me-cli-sunset
+   ```
+5. Setup dependencies:
+   ```bash
+   bash setup.sh
+   ```
+6. Run the script:
+   ```bash
+   python main.py
+   ```
 
-## PS for Certain Indonesian mobile internet service provider
+## Usage Notes
+- Keep your `.env` file private.
+- If you encounter issues with tokens or sessions, re-run the login flow from the menu.
 
+## Info
+### PS for Certain Indonesian mobile internet service provider
 Instead of just delisting the package from the app, ensure the user cannot purchase it.
 What's the point of strong client side security when the server don't enforce it?
 
-## Terms of Service
+### Terms of Service
 By using this tool, the user agrees to comply with all applicable laws and regulations and to release the developer from any and all claims arising from its use.
 
-## Contact
-
+### Contact
 contact@mashu.lol
