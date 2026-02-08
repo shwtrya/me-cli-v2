@@ -4,7 +4,7 @@ import re
 import textwrap
 from shutil import get_terminal_size
 
-from app.service.config import load_config
+from app.service.config import load_config, resolve_table_width
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -60,6 +60,7 @@ def render_table(
     *,
     column_spacing: int = 2,
     separator_char: str = "-",
+    width: int | None = None,
 ) -> str:
     columns = len(headers)
     col_widths = [len(strip_ansi(header)) for header in headers]
@@ -68,10 +69,27 @@ def render_table(
             cell = row[idx] if idx < len(row) else ""
             col_widths[idx] = max(col_widths[idx], len(strip_ansi(str(cell))))
 
+    if width:
+        available_width = max(width - (column_spacing * (columns - 1)), columns)
+        if sum(col_widths) > available_width:
+            base_width = max(1, available_width // columns)
+            extra = available_width % columns
+            col_widths = [
+                base_width + (1 if idx < extra else 0) for idx in range(columns)
+            ]
+
     spacer = " " * column_spacing
-    header_line = spacer.join(
-        header.ljust(col_widths[idx]) for idx, header in enumerate(headers)
-    )
+    header_cells = []
+    for idx, header in enumerate(headers):
+        header_text = header
+        if len(strip_ansi(header_text)) > col_widths[idx]:
+            header_text = textwrap.shorten(
+                strip_ansi(header_text),
+                width=col_widths[idx],
+                placeholder="…",
+            )
+        header_cells.append(header_text.ljust(col_widths[idx]))
+    header_line = spacer.join(header_cells)
     separator = separator_char * len(strip_ansi(header_line))
     body_lines = []
     for row in rows:
@@ -79,10 +97,24 @@ def render_table(
         for idx in range(columns):
             cell = row[idx] if idx < len(row) else ""
             cell_text = str(cell)
-            cells.append(cell_text.ljust(col_widths[idx] + (len(cell_text) - len(strip_ansi(cell_text)))))
+            if len(strip_ansi(cell_text)) > col_widths[idx]:
+                cell_text = textwrap.shorten(
+                    strip_ansi(cell_text),
+                    width=col_widths[idx],
+                    placeholder="…",
+                )
+            cells.append(
+                cell_text.ljust(
+                    col_widths[idx] + (len(cell_text) - len(strip_ansi(cell_text)))
+                )
+            )
         body_lines.append(spacer.join(cells))
 
     return "\n".join([header_line, separator, *body_lines])
+
+
+def get_table_width(config: dict | None = None) -> int:
+    return resolve_table_width(config or load_config())
 
 def clear_screen():
     if os.getenv("MYXL_CLI_DEBUG") == "1":
