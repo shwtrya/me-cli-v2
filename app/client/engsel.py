@@ -374,9 +374,8 @@ def get_notification_detail(
 
     return res
 
-def get_pending_transaction(api_key: str, tokens: dict) -> dict:
-    # @TODO: implement this function properly
-    path = "api/v8/profile"
+def get_pending_transaction(api_key: str, tokens: dict) -> list[dict]:
+    path = "payments/api/v8/pending-payment"
 
     raw_payload = {
         "is_enterprise": False,
@@ -410,7 +409,12 @@ def get_pending_transaction(api_key: str, tokens: dict) -> dict:
     #     "status": "SUCCESS"
     # }
 
-    return res.get("data")
+    if isinstance(res, dict) and res.get("status") != "SUCCESS":
+        print("Error getting pending transactions:", res.get("error", "Unknown error"))
+        return []
+
+    pending_data = res.get("data", {})
+    return pending_data.get("pending_payment", [])
 
 def get_transaction_history(api_key: str, tokens: dict) -> dict:
     path = "payments/api/v8/transaction-history"

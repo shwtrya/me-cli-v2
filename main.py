@@ -12,7 +12,7 @@ from app.client.engsel import (
     get_tiering_info,
 )
 from app.client.famplan import validate_msisdn
-from app.menus.payment import show_transaction_history
+from app.menus.payment import show_transaction_history, show_pending_transactions
 from app.service.auth import AuthInstance
 from app.menus.bookmark import show_bookmark_menu
 from app.menus.account import show_account_menu
@@ -55,6 +55,7 @@ def show_main_menu(profile, width: int):
     print("6. Beli Paket Berdasarkan Family Code")
     print("7. Beli Semua Paket di Family Code (loop)")
     print("8. Riwayat Transaksi")
+    print("8b. Pending Transaction")
     print("9. Family Plan/Akrab Organizer")
     print("10. Circle")
     print("11. Store Segments")
@@ -350,6 +351,8 @@ def main():
                 )
             elif choice == "8":
                 show_transaction_history(AuthInstance.api_key, active_user["tokens"])
+            elif choice.lower() == "8b":
+                show_pending_transactions(AuthInstance.api_key, active_user["tokens"])
             elif choice == "9":
                 show_family_info(AuthInstance.api_key, active_user["tokens"])
             elif choice == "10":
