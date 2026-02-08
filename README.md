@@ -13,6 +13,11 @@ CLI client for a certain Indonesian mobile internet service provider.
 - Python 3.10+ (recommended).
 - Internet connection.
 - Environment variables from the official channel.
+- Optional: install the secure extra to encrypt tokens at rest.
+
+> Trade-off: installing the secure extra adds native crypto dependencies (slower installs),
+> but keeps refresh tokens encrypted on disk. Skipping it makes installation faster
+> and lighter, but tokens are stored in plaintext.
 
 ## 🔐 Environment Variables
 1. Open [OUR TELEGRAM CHANNEL](https://t.me/alyxcli).
@@ -25,6 +30,17 @@ CLI client for a certain Indonesian mobile internet service provider.
 ```bash
 bash setup.sh
 python main.py
+```
+
+### 🔐 Optional secure install (token encryption)
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-secure.txt
+```
+
+If this project is installed as a package, the secure extra can be enabled with:
+```bash
+python -m pip install ".[secure]"
 ```
 
 ## 📱 Termux Setup (Android)
@@ -47,6 +63,10 @@ python main.py
 5. Setup dependencies:
    ```bash
    bash setup.sh
+   ```
+   Optional (token encryption):
+   ```bash
+   python -m pip install -r requirements-secure.txt
    ```
 6. Run the script:
    ```bash
