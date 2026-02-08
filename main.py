@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from app.service.git import check_for_updates
 load_dotenv()
 
+import argparse
 import sys, json
 from datetime import datetime
 from app.menus.util import clear_screen, pause, render_header, format_price, style_text
@@ -67,6 +68,200 @@ def show_main_menu(profile):
     print("-------------------------------------------------------")
 
 show_menu = True
+
+def ensure_active_user():
+    active_user = AuthInstance.get_active_user()
+    if active_user is None:
+        selected_user_number = show_account_menu()
+        if selected_user_number:
+            AuthInstance.set_active_user(selected_user_number)
+            active_user = AuthInstance.get_active_user()
+        else:
+            print("No user selected or failed to load user.")
+    return active_user
+
+def prompt_yes_no(message: str) -> bool:
+    answer = input(message).strip().lower()
+    return answer == "y"
+
+def run_login_command(args):
+    selected_user_number = show_account_menu()
+    if selected_user_number:
+        AuthInstance.set_active_user(selected_user_number)
+    else:
+        print("No user selected or failed to load user.")
+        return
+
+    if args.msisdn:
+        active_user = ensure_active_user()
+        if not active_user:
+            return
+        res = validate_msisdn(
+            AuthInstance.api_key,
+            active_user["tokens"],
+            args.msisdn,
+        )
+        print(json.dumps(res, indent=2))
+        pause()
+
+def run_packages_command(args):
+    active_user = ensure_active_user()
+    if not active_user:
+        return
+
+    if args.option_code:
+        show_package_details(
+            AuthInstance.api_key,
+            active_user["tokens"],
+            args.option_code,
+            args.enterprise,
+        )
+        return
+    if args.family_code:
+        get_packages_by_family(args.family_code)
+        return
+
+    fetch_my_packages()
+
+def run_purchase_command(args):
+    active_user = ensure_active_user()
+    if not active_user:
+        return
+
+    if args.option_code:
+        show_package_details(
+            AuthInstance.api_key,
+            active_user["tokens"],
+            args.option_code,
+            args.enterprise,
+        )
+        return
+
+    if not args.family_code:
+        family_code = input("Enter family code (or '99' to cancel): ")
+        if family_code == "99":
+            return
+    else:
+        family_code = args.family_code
+
+    if args.start_from_option is None:
+        start_from_option = input("Start purchasing from option number (default 1): ")
+        try:
+            start_from_option = int(start_from_option)
+        except ValueError:
+            start_from_option = 1
+    else:
+        start_from_option = args.start_from_option
+
+    if args.use_decoy is None:
+        use_decoy = prompt_yes_no("Use decoy package? (y/n): ")
+    else:
+        use_decoy = args.use_decoy
+
+    if args.pause_on_success is None:
+        pause_on_success = prompt_yes_no("Pause on each successful purchase? (y/n): ")
+    else:
+        pause_on_success = args.pause_on_success
+
+    if args.delay_seconds is None:
+        delay_seconds = input("Delay seconds between purchases (0 for no delay): ")
+        try:
+            delay_seconds = int(delay_seconds)
+        except ValueError:
+            delay_seconds = 0
+    else:
+        delay_seconds = args.delay_seconds
+
+    purchase_by_family(
+        family_code,
+        use_decoy,
+        pause_on_success,
+        delay_seconds,
+        start_from_option,
+    )
+
+def run_history_command(args):
+    active_user = ensure_active_user()
+    if not active_user:
+        return
+    show_transaction_history(AuthInstance.api_key, active_user["tokens"])
+
+def run_notifications_command(args):
+    active_user = ensure_active_user()
+    if not active_user:
+        return
+    show_notification_menu()
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="MyXL CLI")
+    subparsers = parser.add_subparsers(dest="command")
+
+    login_parser = subparsers.add_parser("login", help="Login atau ganti akun")
+    login_parser.add_argument("--msisdn", help="MSISDN untuk divalidasi")
+    login_parser.set_defaults(func=run_login_command)
+
+    packages_parser = subparsers.add_parser("packages", help="Kelola paket")
+    packages_parser.add_argument("--option-code", help="Option code paket")
+    packages_parser.add_argument("--family-code", help="Family code paket")
+    packages_parser.add_argument(
+        "--enterprise",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Gunakan mode enterprise",
+    )
+    packages_parser.set_defaults(func=run_packages_command)
+
+    purchase_parser = subparsers.add_parser("purchase", help="Beli paket")
+    purchase_parser.add_argument("--option-code", help="Option code paket")
+    purchase_parser.add_argument("--family-code", help="Family code paket")
+    purchase_parser.add_argument(
+        "--enterprise",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Gunakan mode enterprise",
+    )
+    purchase_parser.add_argument(
+        "--use-decoy",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Gunakan paket decoy",
+    )
+    purchase_parser.add_argument(
+        "--pause-on-success",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Pause setiap pembelian sukses",
+    )
+    purchase_parser.add_argument(
+        "--delay-seconds",
+        type=int,
+        default=None,
+        help="Delay antar pembelian (detik)",
+    )
+    purchase_parser.add_argument(
+        "--start-from-option",
+        type=int,
+        default=None,
+        help="Mulai pembelian dari nomor option",
+    )
+    purchase_parser.set_defaults(func=run_purchase_command)
+
+    history_parser = subparsers.add_parser("history", help="Riwayat transaksi")
+    history_parser.set_defaults(func=run_history_command)
+
+    notifications_parser = subparsers.add_parser("notifications", help="Notifikasi")
+    notifications_parser.set_defaults(func=run_notifications_command)
+
+    return parser
+
+def run_cli():
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.command is None:
+        return False
+    args.func(args)
+    return True
+
 def main():
     
     while True:
@@ -228,7 +423,9 @@ if __name__ == "__main__":
         if need_update:
             pause()
 
-        main()
+        handled = run_cli()
+        if not handled:
+            main()
     except KeyboardInterrupt:
         print("\nExiting the application.")
     # except Exception as e:
