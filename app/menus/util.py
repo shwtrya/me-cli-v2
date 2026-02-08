@@ -82,7 +82,8 @@ def render_table(
     return "\n".join([header_line, separator, *body_lines])
 
 def clear_screen():
-    print("Clearing screen...")
+    if os.getenv("MYXL_CLI_DEBUG") == "1":
+        print("Clearing screen...")
     os.system('cls' if os.name == 'nt' else 'clear')
     ascii_art = r"""
             _____                    _____          
