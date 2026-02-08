@@ -374,6 +374,27 @@ def get_notification_detail(
 
     return res
 
+def mark_notification_read(
+    api_key: str,
+    tokens: dict,
+    notification_id: str
+) -> bool:
+    path = "api/v8/notification/mark-as-read"
+
+    raw_payload = {
+        "is_enterprise": False,
+        "lang": "en",
+        "notification_id": notification_id
+    }
+
+    res = send_api_request(api_key, path, raw_payload, tokens["id_token"], "POST")
+
+    if isinstance(res, dict) and res.get("status") != "SUCCESS":
+        print("Error marking notification as read:", res.get("error", "Unknown error"))
+        return False
+
+    return True
+
 def get_pending_transaction(api_key: str, tokens: dict) -> list[dict]:
     path = "payments/api/v8/pending-payment"
 
